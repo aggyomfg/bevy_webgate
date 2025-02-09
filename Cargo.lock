@@ -316,6 +316,8 @@ checksum = "8b75356056920673b02621b35afd0f7dda9306d03c79a30f5c56c44cf256e3de"
 [[package]]
 name = "async_shared"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3a3798aef42d790ca77f50905303d776fb61d269dbf91b93642631cf119f4a1"
 dependencies = [
  "event-listener 5.4.0",
  "futures-core",
@@ -622,6 +624,8 @@ dependencies = [
 [[package]]
 name = "bevy_defer"
 version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31824c517a2fb57084e45153975132d2fa2adba44f192050739a40c782334398"
 dependencies = [
  "async-executor",
  "async-oneshot",
@@ -644,6 +648,8 @@ dependencies = [
 [[package]]
 name = "bevy_defer_derive"
 version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f60eb5b91901041a1b444f4db945cff09f95efbf4119fab2b6f95a376ea5f3df"
 dependencies = [
  "proc-macro-crate",
  "proc-macro-error",
