@@ -15,7 +15,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy_webserver = "0.1.0"
+bevy_webserver = "0.1.1"
 bevy = "0.15.2"
 axum = "0.8.1"
 ```

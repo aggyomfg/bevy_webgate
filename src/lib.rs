@@ -139,6 +139,9 @@ pub trait RouterAppExt {
 impl RouterAppExt for App {
     fn router(&mut self, router_fn: impl FnOnce(Router) -> Router) {
         self.world_mut().init_resource::<RouterWrapper>();
+        if !self.is_plugin_added::<BevyWebServerPlugin>() {
+            self.add_plugins(BevyWebServerPlugin);
+        }
         let router = self
             .world_mut()
             .remove_resource::<RouterWrapper>()
