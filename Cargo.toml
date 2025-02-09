@@ -2,27 +2,26 @@
 name = "bevy_webserver"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Malek <pocmalek@gmail.com>"]
+description = "A web server integration for the Bevy game engine that allows you to easily append a webserver to Bevy."
+readme = "README.md"
+repository = "https://github.com/MalekiRe/bevy_webserver"
 
 [dependencies]
 bevy = { version = "0.15.2", features = ["serialize"] }
 bevy_defer = { path = "../bevy_defer"}
 hyper = { version = "1.1.0", features = ["server", "http1"] }
-anyhow = "1.0.95"
 async-io = "2.4.0"
 smol-hyper = { version = "0.1.1" }
 http-body-util = "0.1"
 hyper-util = "0.1.10"
-tower = "0.5.2"
 axum = "0.8.1"
-smol-axum = { path = "../smol-axum" }
 tower-service = "0.3.3"
+anyhow = "1.0.95"
+tower = "0.5.2"
 async-executor = "1.13.1"
-serde_json = "1.0.138"
-serde = { version = "1.0.217", features = ["derive"] }
-serde-this-or-that = "0.5.0"
 fjall = "2.6.0"
-bevy-trait-query = "0.7.0"
-bincode = "1.3.3"
 never-type = "0.1.1"
 pin-project-lite = "0.2.16"
 
@@ -30,3 +29,4 @@ pin-project-lite = "0.2.16"
 bevy_easy_database = "0.1.0"
 maud = "0.27.0"
 serde = {version = "1.0.217", features = ["default"] }
+serde_json = "1.0.138"

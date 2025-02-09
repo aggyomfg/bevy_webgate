@@ -9,6 +9,7 @@ use axum::{
 };
 use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::entity::Entities;
+use bevy::ecs::world::error::EntityComponentError;
 use bevy::reflect::{
     DynamicTypePath, EnumInfo, ReflectFromPtr, StructInfo, TupleStructInfo, TypeInfo, TypeRegistry,
 };
@@ -18,7 +19,6 @@ use bevy_webserver::{BevyWebServerPlugin, RouterAppExt};
 use maud::{html, Markup, PreEscaped};
 use std::any::Any;
 use std::ops::Deref;
-use bevy::ecs::world::error::EntityComponentError;
 
 pub struct EditorCorePlugin;
 
@@ -302,7 +302,7 @@ fn render_component(
     component_info: ComponentInfo,
     type_registry: &TypeRegistry,
     entity: Entity,
-    world: &World,  // Add world parameter
+    world: &World, // Add world parameter
     component_name: &str,
 ) -> Markup {
     let (_, name) = component_info.name().rsplit_once("::").unwrap();
@@ -312,7 +312,8 @@ fn render_component(
 
     // Get the actual component data
     let component_data = if let Some(type_id) = component_info.type_id() {
-        match world.entity(entity)
+        match world
+            .entity(entity)
             .get_by_id(component_info.id())
             .map(|component| {
                 let reflect_data = type_registry.get(type_id)?;
@@ -361,7 +362,12 @@ fn render_component_list(entity: Entity, world: &World) -> Markup {
     }
 }
 
-fn render_struct(struct_info: &StructInfo, entity: Entity, component_name: &str, component_data: &dyn Reflect) -> Markup {
+fn render_struct(
+    struct_info: &StructInfo,
+    entity: Entity,
+    component_name: &str,
+    component_data: &dyn Reflect,
+) -> Markup {
     let struct_data = component_data.reflect_ref().as_struct().unwrap();
 
     html! {
@@ -538,7 +544,12 @@ async fn render_inspector() -> Html<String> {
     })
 }
 
-fn render_type_info(type_info: &TypeInfo, entity: Entity, component_name: &str, component_data: &dyn Reflect) -> Markup {
+fn render_type_info(
+    type_info: &TypeInfo,
+    entity: Entity,
+    component_name: &str,
+    component_data: &dyn Reflect,
+) -> Markup {
     match type_info {
         TypeInfo::Struct(info) => render_struct(info, entity, component_name, component_data),
         TypeInfo::TupleStruct(info) => render_tuple_struct(info),

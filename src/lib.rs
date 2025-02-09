@@ -1,37 +1,23 @@
-mod other;
-
-use crate::other::{setup_router, Thing};
-use anyhow::Result as AnyhowResult;
 use async_io::Async;
 use axum::handler::Handler;
 use axum::response::IntoResponse;
-use axum::routing::{get, MethodRouter, Route};
+use axum::routing::{MethodRouter, Route};
 use axum::Router;
 use bevy::prelude::*;
-use bevy::reflect::erased_serde::serialize;
-use bevy::tasks::IoTaskPool;
-use bevy_defer::{AsyncAccess, AsyncCommandsExtension, AsyncExtension, AsyncPlugin, AsyncWorld};
-//use bevy_easy_database::{AddDatabaseMapping, DatabaseIgnore, DatabasePlugin};
 use bevy::tasks::futures_lite::ready;
-use bevy::utils::error;
-use http_body_util::{BodyExt, Full};
-use hyper::body::{Bytes, Incoming};
+use bevy_defer::{AsyncExtension, AsyncPlugin, AsyncWorld};
 use hyper::server::conn::http1;
-use hyper::{service, Method, Request, Response};
+use hyper::Request;
 use never_type::Never;
 use smol_hyper::rt::{FuturesIo, SmolTimer};
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::future::Future;
-use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, TcpListener};
 use std::pin::Pin;
 use std::str::FromStr;
-use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::Layer;
 use tower_service::Service;
-
-fn main() {}
 
 pub struct BevyWebServerPlugin;
 
