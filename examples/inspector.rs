@@ -49,7 +49,7 @@ pub fn reset_selected_entity_if_entity_despawned(
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, WebInspectorPlugin, BevyWebServerPlugin))
+        .add_plugins((DefaultPlugins, WebInspectorPlugin))
         .insert_resource(SelectedEntity::default())
         .add_systems(Startup, setup)
         .run();
@@ -94,7 +94,7 @@ async fn update_component_field(
 
         let mut stuff = None;
 
-        for component in world.components().iter() {
+        for component in world.components().iter_registered() {
             if let Some(info) = type_registry.get_type_info(component.type_id().unwrap()) {
                 let component_short_name = info.type_path().split("::").last().unwrap_or("");
 
@@ -156,7 +156,7 @@ async fn update_component_field(
                                 if let Ok(color_value) =
                                     serde_json::from_value::<[f32; 4]>(update.value)
                                 {
-                                    let color = Color::rgba(
+                                    let color = Color::srgba(
                                         color_value[0],
                                         color_value[1],
                                         color_value[2],
@@ -349,7 +349,7 @@ fn render_component_list(entity: Entity, world: &World) -> Markup {
     html! {
         div class="component-list p-3" {
             h3 class="h5 text-light mb-3" { "Entity Components" }
-            @for component_info in world.inspect_entity(entity) {
+            @for component_info in world.inspect_entity(entity).unwrap() {
                 (render_component(
                     component_info.clone(),
                     &type_registry,
@@ -469,6 +469,7 @@ fn get_named_entities(world: &mut World) -> Vec<(Entity, Option<String>)> {
         // Only include entities that have at least one reflected component
         if world
             .inspect_entity(entity)
+            .unwrap()
             .filter(|info| {
                 let type_register = type_registry.clone();
                 let type_register = type_register.read();
@@ -503,6 +504,7 @@ fn get_component_count(world: &World, entity: Entity) -> usize {
     // Only count reflected components
     world
         .inspect_entity(entity)
+        .unwrap()
         .filter(move |info| {
             let type_registry = type_registry.clone();
             let type_registry = type_registry.read();

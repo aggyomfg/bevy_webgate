@@ -166,8 +166,7 @@ struct ScoreForm {
     score: String,
 }
 
-const CSS: &'static str =
-r#"
+const CSS: &'static str = r#"
                     :root {
                         --primary-color: #4f46e5;
                         --primary-hover: #4338ca;

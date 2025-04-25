@@ -3,9 +3,12 @@ use axum::handler::Handler;
 use axum::response::IntoResponse;
 use axum::routing::{MethodRouter, Route};
 use axum::Router;
-use bevy::prelude::*;
-use bevy::tasks::futures_lite::ready;
+use bevy_app::prelude::*;
 use bevy_defer::{AsyncExtension, AsyncPlugin, AsyncWorld};
+use bevy_derive::{Deref, DerefMut};
+use bevy_ecs::prelude::*;
+use bevy_log::error;
+use bevy_tasks::futures_lite::ready;
 use hyper::server::conn::http1;
 use hyper::Request;
 use never_type::Never;
@@ -21,12 +24,12 @@ use tower_service::Service;
 
 pub struct BevyWebServerPlugin;
 
-impl Plugin for BevyWebServerPlugin {
-    fn build(&self, app: &mut App) {
+impl bevy_app::Plugin for BevyWebServerPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
         if !app.is_plugin_added::<AsyncPlugin>() {
             app.add_plugins(AsyncPlugin::default_settings());
         }
-        app.add_systems(Startup, start_server);
+        app.add_systems(bevy_app::Startup, start_server);
     }
 }
 
@@ -45,7 +48,7 @@ impl Default for WebServerConfig {
     }
 }
 
-fn start_server(world: &mut World) {
+fn start_server(world: &mut bevy_ecs::world::World) {
     let web_server_config = world
         .remove_resource::<WebServerConfig>()
         .unwrap_or_default();
@@ -136,7 +139,7 @@ pub trait RouterAppExt {
         T: 'static;
 }
 
-impl RouterAppExt for App {
+impl RouterAppExt for bevy_app::App {
     fn router(&mut self, router_fn: impl FnOnce(Router) -> Router) {
         self.world_mut().init_resource::<RouterWrapper>();
         if !self.is_plugin_added::<BevyWebServerPlugin>() {

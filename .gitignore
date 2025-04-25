@@ -1,3 +1,4 @@
 /target
 /database
 .idea
+Cargo.lock
