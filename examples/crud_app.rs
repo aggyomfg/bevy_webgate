@@ -1,15 +1,15 @@
 use bevy::prelude::*;
 use bevy_defer::{AsyncAccess, AsyncWorld};
 use bevy_easy_database::*;
-use bevy_webserver::RouterAppExt;
+use bevy_webserver::prelude::*;
 use maud::{html, Markup, DOCTYPE};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(Component, Clone, Serialize, Deserialize)]
+#[derive(Clone, Component, Deserialize, Serialize)]
 pub struct Player(pub String);
 
-#[derive(Component, Clone, Serialize, Deserialize)]
+#[derive(Clone, Component, Deserialize, Serialize)]
 pub struct Score(pub u32);
 
 fn main() {
@@ -70,7 +70,7 @@ async fn index() -> axum::response::Html<String> {
 
 // List all players
 async fn list_players() -> axum::response::Html<String> {
-    let mut query = AsyncWorld.query::<(&Player, &Score)>();
+    let query = AsyncWorld.query::<(&Player, &Score)>();
     let players = query
         .get_mut(|mut query| -> Vec<(Player, Score)> {
             let mut players = vec![];

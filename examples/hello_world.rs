@@ -1,5 +1,5 @@
 fn main() {
-    use bevy_webserver::RouterAppExt;
+    use bevy_webserver::prelude::*;
     bevy::prelude::App::new()
         .add_plugins((
             bevy::prelude::MinimalPlugins,

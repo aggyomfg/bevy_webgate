@@ -1,24 +1,19 @@
-use async_io::Async;
 use axum::extract::Path;
 use axum::routing::post;
 use axum::{
-    extract::State,
     response::Html,
     routing::{delete, get, put},
     Json,
 };
 use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::entity::Entities;
-use bevy::ecs::world::error::EntityComponentError;
+use bevy::prelude::*;
 use bevy::reflect::{
-    DynamicTypePath, EnumInfo, ReflectFromPtr, StructInfo, TupleStructInfo, TypeInfo, TypeRegistry,
+    EnumInfo, ReflectFromPtr, StructInfo, TupleStructInfo, TypeInfo, TypeRegistry,
 };
-use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_defer::AsyncWorld;
-use bevy_webserver::{BevyWebServerPlugin, RouterAppExt};
+use bevy_webserver::prelude::*;
 use maud::{html, Markup, PreEscaped};
-use std::any::Any;
-use std::ops::Deref;
 
 pub struct EditorCorePlugin;
 
@@ -31,7 +26,7 @@ impl Plugin for EditorCorePlugin {
 }
 
 /// The currently selected entity in the scene.
-#[derive(Resource, Default, Reflect)]
+#[derive(Default, Reflect, Resource)]
 #[reflect(Resource, Default)]
 pub struct SelectedEntity(pub Option<Entity>);
 
@@ -56,7 +51,7 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn((Camera2d));
+    commands.spawn(Camera2d);
     commands.spawn((Name::new("owo"), Transform::default()));
 }
 
@@ -103,7 +98,7 @@ async fn update_component_field(
                 }
             }
         }
-        if let Some((info, type_id, id)) = stuff {
+        if let Some((_info, type_id, id)) = stuff {
             if let Ok(mut entity_mut) = world.get_entity_mut(entity) {
                 // Get mutable reference to component
                 if let Ok(mut component_ref) = entity_mut.get_mut_by_id(id) {
@@ -111,7 +106,7 @@ async fn update_component_field(
                     let reflect_from_ptr = reflect_data.data::<ReflectFromPtr>().unwrap();
                     // SAFE: `value` is of type `Reflected`, which the `ReflectFromPtr` was created for
                     let value = unsafe { reflect_from_ptr.as_reflect_mut(component_ref.as_mut()) };
-                    if let Ok(mut struct_info) = value.reflect_mut().as_struct() {
+                    if let Ok(struct_info) = value.reflect_mut().as_struct() {
                         // Find the field and update it
 
                         let field = struct_info.field_mut(&field_name).unwrap();
@@ -199,7 +194,7 @@ async fn update_component_field(
 }
 
 // State structure to hold component values
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 struct ComponentValue {
     value: serde_json::Value,
 }
@@ -303,7 +298,7 @@ fn render_component(
     type_registry: &TypeRegistry,
     entity: Entity,
     world: &World, // Add world parameter
-    component_name: &str,
+    _component_name: &str,
 ) -> Markup {
     let (_, name) = component_info.name().rsplit_once("::").unwrap();
     let type_info = component_info
@@ -430,7 +425,7 @@ fn render_enum(enum_info: &EnumInfo) -> Markup {
     }
 }
 
-fn render_vec3_input(entity: Entity, field_name: &str, value: Vec3) -> Markup {
+fn _render_vec3_input(entity: Entity, field_name: &str, value: Vec3) -> Markup {
     html! {
         div class="vector-input mb-3" {
             label class="form-label text-light small" { (field_name) }
@@ -563,7 +558,7 @@ fn render_type_info(
 fn render_tuple_struct(tuple_struct_info: &TupleStructInfo) -> Markup {
     html! {
         div class="tuple-struct-fields" {
-            @for (idx, field) in tuple_struct_info.iter().enumerate() {
+            @for (idx, _field) in tuple_struct_info.iter().enumerate() {
                 div class="field-row" {
                     label class="text-xs" { (idx) }
                     input type="text"

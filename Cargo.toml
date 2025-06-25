@@ -1,9 +1,12 @@
 [package]
 name = "bevy_webserver"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-authors = ["Malek <pocmalek@gmail.com>"]
+authors = [
+    "Malek <pocmalek@gmail.com>",
+    "Mikhail Ziablitskii <aggyomfg@yandex.com>",
+]
 description = "A web server integration for the Bevy game engine that allows you to easily append a webserver to Bevy."
 readme = "README.md"
 repository = "https://github.com/MalekiRe/bevy_webserver"
@@ -25,13 +28,12 @@ tower-service = "0.3.3"
 anyhow = "1.0.95"
 tower = "0.5.2"
 async-executor = "1.13.1"
-fjall = "2.6.0"
-never-type = "0.1.1"
-pin-project-lite = "0.2.16"
+dashmap = "6.1.0"
+thiserror = "2.0"
 
 [dev-dependencies]
-bevy = {version = "0.16.0", features = ["serialize"]}
+bevy = { version = "0.16.0", features = ["serialize"] }
 bevy_easy_database = "0.2.0"
 maud = "0.27.0"
-serde = {version = "1.0.217", features = ["default"] }
+serde = { version = "1.0.217", features = ["default"] }
 serde_json = "1.0.138"

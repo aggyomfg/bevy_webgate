@@ -8,6 +8,8 @@ For either creating standalone webapps or appending a webserver to an existing b
 - 🚀 Seamless integration with Bevy ECS
 - 🌐 Built on top of Axum for all your webserver needs
 - ⚡ Async-first design with full ECS access thanks to bevy_defer
+- 🔧 **Multi-port support** - Run multiple servers on different ports
+- 🏠 **IP binding control** - Bind servers to specific IP addresses
 
 ## Installation
 
@@ -15,7 +17,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy_webserver = "0.2.0"
+bevy_webserver = "0.3.0"
 bevy = "0.16.0"
 axum = "0.8.1"
 ```
@@ -62,6 +64,28 @@ fn main() {
         .run();
 }
 ```
+
+### Multi-Port Support
+
+Run multiple web servers on different ports within a single Bevy application:
+
+```rust
+use bevy::prelude::*;
+use bevy_webserver::prelude::*;
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins)
+        
+        // Port-specific routes
+        .port_route(8080, "/api/users", axum::routing::get(get_users))
+        .port_route(8081, "/admin", axum::routing::get(admin_panel))
+        .port_route(8082, "/health", axum::routing::get(health_check))
+        .run();
+}
+```
+
+For more details on multi-port functionality, see [docs/multi_port.md](docs/multi_port.md).
 
 ### Accessing Bevy ECS from Handlers
 
@@ -151,7 +175,6 @@ async fn player_list() -> axum::response::Html<String> {
 There is a complete example of a web-based game score tracker in examples/crud_app.rs
 
 This also uses another one of my crates bevy_easy_database which makes it easy to persist data!
-
 
 ## Contributing
 
