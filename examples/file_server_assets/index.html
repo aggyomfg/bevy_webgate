@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bevy WebServer - File Server Demo</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="/static/bevy_logo_dark.svg" alt="Bevy Logo" class="nav-logo">
+            </div>
+            <div class="nav-subtitle">WebServer</div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="hero">
+            <div class="hero-content">
+                <h1>A simple web server built for Bevy game engine</h1>
+                <p class="hero-subtitle">Free and Open Source Forever!</p>
+                <button class="cta-button" onclick="loadData()">Get Started</button>
+            </div>
+        </section>
+
+        <section class="demo-section">
+            <div class="container">
+                <h2>Demo Features</h2>
+                <div class="demo-grid">
+                    <div class="demo-item">
+                        <h3>Static File Serving</h3>
+                        <p>Serves HTML, CSS, JavaScript files with proper MIME types</p>
+                    </div>
+                    <div class="demo-item">
+                        <h3>Image & SVG Support</h3>
+                        <p>Handle images and vector graphics with caching headers</p>
+                    </div>
+                    <div class="demo-item">
+                        <h3>JSON API Endpoints</h3>
+                        <p>RESTful API endpoints with structured JSON responses</p>
+                    </div>
+                    <div class="demo-item">
+                        <h3>Built with Bevy & Axum</h3>
+                        <p>Leveraging the power of Rust's async ecosystem</p>
+                    </div>
+                </div>
+                
+                <div class="api-demo">
+                    <h3>Try the API</h3>
+                    <div id="data-display" class="api-response">
+                        <p>Click "Get Started" to load demo data from our JSON API</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Powered by <strong>Bevy WebServer</strong> - A refreshingly simple web server built in Rust</p>
+        </div>
+    </footer>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>

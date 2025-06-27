@@ -366,7 +366,7 @@ impl WebServer {
                                     let err_msg = err.to_string();
                                     if err_msg.contains("timeout") || err_msg.contains("incomplete")
                                     {
-                                        warn!(
+                                        debug!(
                                             "Connection {} timeout after {:?}: {}",
                                             connection_id, duration, err
                                         );

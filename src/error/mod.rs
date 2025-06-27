@@ -1,6 +1,9 @@
 use std::net::IpAddr;
 use thiserror::Error;
 
+pub mod http;
+pub use http::*;
+
 pub type WebServerResult<T> = Result<T, WebServerError>;
 
 #[derive(Debug, Error)]

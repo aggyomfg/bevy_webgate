@@ -5,8 +5,10 @@ use std::net::{IpAddr, Ipv4Addr};
 mod app_ext;
 mod error;
 mod server;
+mod static_assets;
 
 pub mod prelude;
+pub mod utils;
 
 #[cfg(test)]
 mod tests;
@@ -15,8 +17,9 @@ pub const DEFAULT_PORT: WebPort = 8080;
 pub const DEFAULT_IP: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
 pub use app_ext::*;
-pub use error::{WebServerError, WebServerResult};
+pub use error::*;
 pub use server::{WebPort, WebServer, WebServerConfig, WebServerManager};
+pub use static_assets::*;
 
 pub struct BevyWebServerPlugin;
 
@@ -25,6 +28,8 @@ impl Plugin for BevyWebServerPlugin {
         if !app.is_plugin_added::<AsyncPlugin>() {
             app.add_plugins(AsyncPlugin::default_settings());
         }
+
+        app.add_plugins(WebStaticAssetsPlugin);
 
         let world = app.world_mut();
 

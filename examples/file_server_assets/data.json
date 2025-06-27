@@ -1,0 +1,27 @@
+{
+  "message": "Hello from Bevy WebServer!",
+  "timestamp": "2025-06-27T12:00:00Z",
+  "server_info": {
+    "name": "bevy_webserver",
+    "version": "0.3.0",
+    "framework": "Axum + Bevy"
+  },
+  "features": [
+    "Static file serving",
+    "Multi-port support",
+    "ECS integration",
+    "Async handlers"
+  ],
+  "demo_data": {
+    "users": [
+      {"id": 1, "name": "Alice", "role": "Developer"},
+      {"id": 2, "name": "Bob", "role": "Designer"},
+      {"id": 3, "name": "Charlie", "role": "DevOps"}
+    ],
+    "stats": {
+      "requests_served": 42,
+      "uptime_seconds": 3600,
+      "active_connections": 5
+    }
+  }
+}

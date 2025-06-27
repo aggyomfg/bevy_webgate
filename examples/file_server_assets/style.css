@@ -1,0 +1,342 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Navigation */
+.navbar {
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.nav-logo {
+    width: 120px;
+    height: 50px;
+    filter: brightness(0) invert(1);
+}
+
+.nav-subtitle {
+    color: #7d8590;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+/* Hero section */
+.hero {
+    padding: 4rem 0 6rem;
+    text-align: center;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+}
+
+.hero-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    line-height: 1.2;
+    background: linear-gradient(135deg, #e6edf3 0%, #ff6b35 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    color: #7d8590;
+    margin-bottom: 2.5rem;
+    font-weight: 400;
+}
+
+.cta-button {
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    color: white;
+    border: none;
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.cta-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+}
+
+.cta-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Features section */
+.features-section {
+    padding: 4rem 0;
+    background: #161b22;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: start;
+}
+
+.feature-card {
+    padding: 1.5rem;
+}
+
+.feature-card h3 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #e6edf3;
+}
+
+.feature-card > p {
+    font-size: 1.1rem;
+    color: #7d8590;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+.feature-list {
+    list-style: none;
+}
+
+.feature-list li {
+    padding: 0.75rem 0;
+    color: #7d8590;
+    line-height: 1.5;
+}
+
+.feature-list strong {
+    color: #ff6b35;
+    font-weight: 600;
+}
+
+/* Code example */
+.code-example {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.code-header {
+    background: #21262d;
+    padding: 0.75rem 1rem;
+    color: #ff6b35;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-bottom: 1px solid #30363d;
+}
+
+.code-block {
+    padding: 1.5rem;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #e6edf3;
+    overflow-x: auto;
+}
+
+.keyword { color: #ff7b72; }
+.type { color: #79c0ff; }
+.function { color: #d2a8ff; }
+.variable { color: #ffa657; }
+
+/* Demo section */
+.demo-section {
+    padding: 4rem 0;
+    background: #0d1117;
+}
+
+.demo-section h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 3rem;
+    color: #e6edf3;
+}
+
+.demo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.demo-item {
+    background: #161b22;
+    padding: 2rem;
+    border-radius: 8px;
+    border: 1px solid #30363d;
+    transition: all 0.3s ease;
+}
+
+.demo-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border-color: #ff6b35;
+}
+
+.demo-item h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: #ff6b35;
+}
+
+.demo-item p {
+    color: #7d8590;
+    line-height: 1.5;
+}
+
+/* API Demo */
+.api-demo {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.api-demo h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: #e6edf3;
+}
+
+.api-response {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1.5rem;
+    min-height: 100px;
+    text-align: left;
+    transition: all 0.3s ease;
+}
+
+.api-response.loaded {
+    border-color: #238636;
+    background: rgba(35, 134, 54, 0.1);
+}
+
+.api-response.error {
+    border-color: #da3633;
+    background: rgba(218, 54, 51, 0.1);
+}
+
+.api-response pre {
+    background: #0d1117;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: 0.8rem;
+    color: #e6edf3;
+    border: 1px solid #30363d;
+}
+
+/* Footer */
+.footer {
+    background: #161b22;
+    border-top: 1px solid #30363d;
+    padding: 2rem 0;
+    text-align: center;
+    color: #7d8590;
+}
+
+.footer strong {
+    color: #e6edf3;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .nav-container {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .hero {
+        padding: 3rem 0 4rem;
+    }
+    
+    .hero-content {
+        padding: 0 1rem;
+    }
+    
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    
+    .demo-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .container {
+        padding: 0 1rem;
+    }
+    
+    .feature-card h3 {
+        font-size: 2rem;
+    }
+}
+
+/* Loading animation */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.cta-button:disabled {
+    animation: pulse 2s infinite;
+}
