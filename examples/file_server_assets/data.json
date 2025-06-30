@@ -1,8 +1,8 @@
 {
-  "message": "Hello from Bevy WebServer!",
+  "message": "Hello from Bevy WebGate!",
   "timestamp": "2025-06-27T12:00:00Z",
   "server_info": {
-    "name": "bevy_webserver",
+    "name": "bevy_webgate",
     "version": "0.3.0",
     "framework": "Axum + Bevy"
   },

@@ -1,4 +1,4 @@
-// JavaScript for Bevy WebServer Demo
+// JavaScript for Bevy WebGate Demo
 
 async function loadData() {
     const button = document.querySelector('.cta-button');
@@ -54,7 +54,7 @@ async function loadData() {
 
 // Add some interactivity on page load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Bevy WebServer File Server Demo loaded!');
+    console.log('🚀 Bevy WebGate File Server Demo loaded!');
     
     // Add hover effects to demo items
     const demoItems = document.querySelectorAll('.demo-item');

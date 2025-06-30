@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_defer::{AsyncAccess, AsyncWorld};
 use bevy_easy_database::*;
-use bevy_webserver::prelude::*;
+use bevy_webgate::prelude::*;
 use maud::{html, Markup, DOCTYPE};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -16,7 +16,7 @@ fn main() {
     App::new()
         .add_plugins((
             MinimalPlugins,
-            bevy_webserver::BevyWebServerPlugin,
+            bevy_webgate::BevyWebServerPlugin,
             DatabasePlugin,
         ))
         .add_database_mapping::<Player>()

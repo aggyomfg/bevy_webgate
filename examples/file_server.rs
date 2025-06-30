@@ -7,7 +7,7 @@ use axum::{
 };
 use bevy::prelude::*;
 use bevy_defer::{AsyncAccess, AsyncWorld};
-use bevy_webserver::{serve_file, HttpErrorResponses, RouterAppExt, WebServerConfig};
+use bevy_webgate::{serve_file, HttpErrorResponses, RouterAppExt, WebServerConfig};
 use serde_json::{json, Value};
 use std::net::{IpAddr, Ipv4Addr};
 
@@ -15,7 +15,7 @@ use std::net::{IpAddr, Ipv4Addr};
 /// including HTML, CSS, JavaScript, images, and JSON data.
 ///
 /// This example shows:
-/// - Using bevy_webserver utilities for efficient file serving
+/// - Using bevy_webgate utilities for efficient file serving
 /// - Proper MIME type handling with mime_guess crate
 /// - Index file serving (index.html)
 /// - Error handling for missing files
@@ -68,7 +68,7 @@ async fn serve_custom_file(Path(file_path): Path<String>) -> Response {
 }
 
 async fn serve_api_info() -> impl IntoResponse {
-    let service_name = "Bevy WebServer File Server";
+    let service_name = "Bevy WebGate File Server";
     let version = "0.3.0";
     let description = "A static file server built with Bevy and Axum";
     let endpoints = vec![
@@ -78,7 +78,7 @@ async fn serve_api_info() -> impl IntoResponse {
         ("/api/info", "This API information"),
     ];
     let features = vec![
-        "Static file serving with bevy_webserver utilities",
+        "Static file serving with bevy_webgate utilities",
         "MIME type detection with mime_guess",
         "Security protection",
         "Caching headers",

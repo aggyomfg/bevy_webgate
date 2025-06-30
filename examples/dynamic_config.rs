@@ -1,7 +1,7 @@
 use axum::{response::Html, routing::get, Router};
 use bevy::prelude::*;
 use bevy_defer::AsyncExecutor;
-use bevy_webserver::prelude::*;
+use bevy_webgate::prelude::*;
 use std::net::{IpAddr, Ipv4Addr};
 
 use std::time::Duration;
@@ -30,7 +30,7 @@ fn main() {
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins)
-        .add_plugins(bevy_webserver::BevyWebServerPlugin);
+        .add_plugins(bevy_webgate::BevyWebServerPlugin);
 
     app.insert_resource({
         let mut timer = Timer::new(Duration::from_secs(30), TimerMode::Repeating);

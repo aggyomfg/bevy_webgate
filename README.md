@@ -1,4 +1,4 @@
-# Bevy Webserver
+# Bevy Webgate
 
 A web server integration for the Bevy game engine that allows you to easily append a webserver to Bevy.
 For either creating standalone webapps or appending a webserver to an existing bevy app/game.
@@ -17,8 +17,8 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy_webserver = "0.3.0"
-bevy = "0.16.0"
+bevy_webgate = "0.1.0"
+bevy = "0.16.1"
 axum = "0.8.1"
 ```
 
@@ -28,7 +28,7 @@ Here's a minimal example that sets up a simple "Hello World" web server:
 
 ```rust
 use bevy::prelude::*;
-use bevy_webserver::RouterAppExt;
+use bevy_webgate::RouterAppExt;
 
 fn main() {
     App::new()

@@ -12,7 +12,7 @@ use bevy::reflect::{
     EnumInfo, ReflectFromPtr, StructInfo, TupleStructInfo, TypeInfo, TypeRegistry,
 };
 use bevy_defer::AsyncWorld;
-use bevy_webserver::prelude::*;
+use bevy_webgate::prelude::*;
 use maud::{html, Markup, PreEscaped};
 
 pub struct EditorCorePlugin;

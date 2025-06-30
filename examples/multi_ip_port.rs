@@ -1,6 +1,6 @@
 use axum::{response::Html, routing::get};
 use bevy::prelude::*;
-use bevy_webserver::prelude::*;
+use bevy_webgate::prelude::*;
 use std::net::{IpAddr, Ipv4Addr};
 
 fn main() {

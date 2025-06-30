@@ -1,9 +1,9 @@
 fn main() {
-    use bevy_webserver::prelude::*;
+    use bevy_webgate::prelude::*;
     bevy::prelude::App::new()
         .add_plugins((
             bevy::prelude::MinimalPlugins,
-            bevy_webserver::BevyWebServerPlugin,
+            bevy_webgate::BevyWebServerPlugin,
         ))
         .route("/hello_world", axum::routing::get(hello_world))
         .run();

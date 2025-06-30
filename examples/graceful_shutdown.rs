@@ -1,6 +1,6 @@
 use axum::routing::get;
 use bevy::prelude::*;
-use bevy_webserver::prelude::*;
+use bevy_webgate::prelude::*;
 use std::time::Duration;
 
 #[derive(Resource)]
@@ -21,7 +21,7 @@ impl Default for ShutdownTimer {
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, bevy_webserver::BevyWebServerPlugin))
+        .add_plugins((DefaultPlugins, bevy_webgate::BevyWebServerPlugin))
         .init_resource::<ShutdownTimer>()
         .route("/", get(hello_handler))
         .route("/slow", get(slow_handler))
