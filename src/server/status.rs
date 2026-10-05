@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
 pub enum ServerStatus {
     /// Server is in the process of starting up
     Starting,
@@ -13,31 +13,29 @@ pub enum ServerStatus {
     /// Server is in the process of shutting down with timeout monitoring
     ShuttingDown,
     /// Server is completely stopped
+    #[default]
     Stopped,
 }
 
-impl Default for ServerStatus {
-    fn default() -> Self {
-        Self::Stopped
-    }
-}
-
 impl ServerStatus {
-    pub fn shutdown_requested(&self) -> bool {
+    #[must_use]
+    pub const fn shutdown_requested(&self) -> bool {
         matches!(self, Self::Shutdown | Self::ShuttingDown)
     }
 
-    pub(crate) fn can_start(&self) -> bool {
+    pub(crate) const fn can_start(self) -> bool {
         matches!(self, Self::Stopped | Self::Retrying)
     }
 
     /// Check if status allows configuration changes
-    pub fn can_reconfigure(&self) -> bool {
+    #[must_use]
+    pub const fn can_reconfigure(&self) -> bool {
         matches!(self, Self::Stopped | Self::Failed)
     }
 
     /// Get a human-readable description
-    pub fn description(&self) -> &'static str {
+    #[must_use]
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::Starting => "Server is starting up",
             Self::Running => "Server is running and accepting connections",
@@ -50,7 +48,8 @@ impl ServerStatus {
     }
 
     /// Check if this is a terminal state (no automatic transitions)
-    pub fn is_terminal(&self) -> bool {
+    #[must_use]
+    pub const fn is_terminal(&self) -> bool {
         matches!(self, Self::Stopped | Self::Failed)
     }
 }

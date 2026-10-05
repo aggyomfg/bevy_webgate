@@ -49,15 +49,18 @@ pub enum WebServerError {
 }
 
 impl WebServerError {
-    pub fn bind_failed(ip: IpAddr, port: u16, source: std::io::Error) -> Self {
+    #[must_use]
+    pub const fn bind_failed(ip: IpAddr, port: u16, source: std::io::Error) -> Self {
         Self::BindFailed { ip, port, source }
     }
 
-    pub fn server_not_found(port: u16) -> Self {
+    #[must_use]
+    pub const fn server_not_found(port: u16) -> Self {
         Self::ServerNotFound { port }
     }
 
-    pub fn server_already_running(port: u16) -> Self {
+    #[must_use]
+    pub const fn server_already_running(port: u16) -> Self {
         Self::ServerAlreadyRunning { port }
     }
 
@@ -113,23 +116,23 @@ impl From<bevy_defer::AccessError> for WebServerError {
         match error {
             AccessError::EntityNotFound(entity) => Self::ResourceExhausted {
                 resource_type: "entity".to_string(),
-                details: format!("entity {:?} not found", entity),
+                details: format!("entity {entity:?} not found"),
             },
             AccessError::QueryConditionNotMet { entity, query } => Self::ResourceExhausted {
                 resource_type: "query".to_string(),
-                details: format!("query condition not met for entity {:?}: {}", entity, query),
+                details: format!("query condition not met for entity {entity:?}: {query}"),
             },
             AccessError::NoEntityFound { query } => Self::ResourceExhausted {
                 resource_type: "entity".to_string(),
-                details: format!("no entity found in query {}", query),
+                details: format!("no entity found in query {query}"),
             },
             AccessError::TooManyEntities { query } => Self::ResourceExhausted {
                 resource_type: "entity".to_string(),
-                details: format!("too many entities in query {}", query),
+                details: format!("too many entities in query {query}"),
             },
             AccessError::ChildNotFound { index } => Self::ResourceExhausted {
                 resource_type: "child".to_string(),
-                details: format!("child index {} missing", index),
+                details: format!("child index {index} missing"),
             },
             AccessError::NamedChildNotFound => Self::ResourceExhausted {
                 resource_type: "child".to_string(),
@@ -137,31 +140,31 @@ impl From<bevy_defer::AccessError> for WebServerError {
             },
             AccessError::TypedChildNotFound { query } => Self::ResourceExhausted {
                 resource_type: "child".to_string(),
-                details: format!("child of type query {} missing", query),
+                details: format!("child of type query {query} missing"),
             },
             AccessError::TypedParentNotFound { query } => Self::ResourceExhausted {
                 resource_type: "parent".to_string(),
-                details: format!("parent of type query {} missing", query),
+                details: format!("parent of type query {query} missing"),
             },
             AccessError::ComponentNotFound { entity, name } => Self::ResourceExhausted {
                 resource_type: "component".to_string(),
-                details: format!("component <{}> not found on entity {:?}", name, entity),
+                details: format!("component <{name}> not found on entity {entity:?}"),
             },
             AccessError::ResourceNotFound { name } => Self::ResourceExhausted {
                 resource_type: "resource".to_string(),
-                details: format!("resource <{}> not found", name),
+                details: format!("resource <{name}> not found"),
             },
             AccessError::AssetNotFound { name } => Self::ResourceExhausted {
                 resource_type: "asset".to_string(),
-                details: format!("asset <{}> not found", name),
+                details: format!("asset <{name}> not found"),
             },
             AccessError::EventNotRegistered { name } => Self::ConfigError {
                 field: "event_registration".to_string(),
-                reason: format!("event <{}> not registered", name),
+                reason: format!("event <{name}> not registered"),
             },
             AccessError::DowncastFailed { name } => Self::ConfigError {
                 field: "downcast".to_string(),
-                reason: format!("downcasting {} failed", name),
+                reason: format!("downcasting {name} failed"),
             },
             AccessError::ScheduleNotFound => Self::ResourceExhausted {
                 resource_type: "schedule".to_string(),
@@ -173,7 +176,7 @@ impl From<bevy_defer::AccessError> for WebServerError {
             },
             AccessError::NotInState { ty } => Self::ConfigError {
                 field: "state".to_string(),
-                reason: format!("not in state of type {}", ty),
+                reason: format!("not in state of type {ty}"),
             },
             AccessError::Custom(msg) => Self::ConfigError {
                 field: "custom".to_string(),

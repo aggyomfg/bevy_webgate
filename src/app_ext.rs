@@ -41,6 +41,9 @@ pub trait WebServerAppExt {
     fn add_server(&mut self, ip: IpAddr, port: WebPort) -> &mut Self;
 
     /// Update a server configuration at runtime
+    ///
+    /// # Errors
+    /// Returns an error if the server cannot be updated.
     fn update_server(
         &mut self,
         ip: IpAddr,
@@ -49,6 +52,9 @@ pub trait WebServerAppExt {
     ) -> WebServerResult<&mut Self>;
 
     /// Remove a server
+    ///
+    /// # Errors
+    /// Returns an error if the server cannot be removed.
     fn remove_server(&mut self, port: WebPort) -> WebServerResult<&mut Self>;
 
     /// Add a route to a specific port
@@ -171,15 +177,15 @@ impl WebServerAppExt for App {
                     .map_or(DEFAULT_IP, |config| config.ip);
 
                 let existing_router = manager
-                    .get_server(&port)
+                    .get_server(port)
                     .map(|srv| srv.router().clone())
                     .unwrap_or_default();
 
                 let new_router = router_fn(existing_router);
-                if !manager.has_server(&port) {
-                    let _ = manager.add_server(WebServer::new(default_ip, port, new_router));
-                } else {
+                if manager.has_server(&port) {
                     manager.set_router(&port, new_router);
+                } else {
+                    let _ = manager.add_server(WebServer::new(default_ip, port, new_router));
                 }
             });
 
@@ -232,7 +238,7 @@ impl WebServerAppExt for App {
             (Some(servers), Some(manager)) => servers
                 .ports()
                 .into_iter()
-                .filter_map(|port| manager.get_server(&port).map(|srv| (port, srv.ip())))
+                .filter_map(|port| manager.get_server(port).map(|srv| (port, srv.ip())))
                 .collect(),
             _ => Vec::new(),
         }
@@ -241,15 +247,14 @@ impl WebServerAppExt for App {
     fn routed_ports(&self) -> Vec<WebPort> {
         self.world()
             .get_resource::<WebServerManager>()
-            .map(|manager| manager.ports())
+            .map(WebServerManager::ports)
             .unwrap_or_default()
     }
 
     fn server_count(&self) -> usize {
         self.world()
             .get_resource::<WebServerManager>()
-            .map(|manager| manager.len())
-            .unwrap_or(0)
+            .map_or(0, WebServerManager::len)
     }
 }
 
@@ -340,7 +345,7 @@ impl RouterAppExt for App {
                 }
 
                 let existing_router = manager
-                    .get_server(&default_port)
+                    .get_server(default_port)
                     .map(|srv| srv.router().clone())
                     .unwrap_or_default();
 

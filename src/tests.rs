@@ -38,19 +38,19 @@ fn test_web_servers_basic_operations() {
 
     assert_eq!(servers.len(), 3);
 
-    let server_8080 = servers.get_server(&18080).unwrap();
+    let server_8080 = servers.get_server(18080).unwrap();
     assert_eq!(server_8080.ip(), IpAddr::V4(Ipv4Addr::LOCALHOST));
     assert_eq!(server_8080.port(), 18080);
 
-    let server_8081 = servers.get_server(&18081).unwrap();
+    let server_8081 = servers.get_server(18081).unwrap();
     assert_eq!(server_8081.ip(), IpAddr::V4(Ipv4Addr::UNSPECIFIED));
     assert_eq!(server_8081.port(), 18081);
 
-    let server_8082 = servers.get_server(&18082).unwrap();
+    let server_8082 = servers.get_server(18082).unwrap();
     assert_eq!(server_8082.ip(), IpAddr::V6(Ipv6Addr::LOCALHOST));
     assert_eq!(server_8082.port(), 18082);
 
-    assert!(servers.get_server(&9999).is_none());
+    assert!(servers.get_server(9999).is_none());
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn test_web_servers_insert_and_update() {
         .unwrap();
 
     assert_eq!(servers.len(), 1);
-    let server = servers.get_server(&19080).unwrap();
+    let server = servers.get_server(19080).unwrap();
     assert_eq!(server.ip(), IpAddr::V4(Ipv4Addr::LOCALHOST));
 
     // Update existing server router (should replace)
@@ -85,7 +85,7 @@ fn test_web_servers_insert_and_update() {
         ))
         .unwrap();
 
-    let server = servers.get_server(&19081).unwrap();
+    let server = servers.get_server(19081).unwrap();
     assert_eq!(server.ip(), IpAddr::V4(Ipv4Addr::LOCALHOST));
 }
 
@@ -142,15 +142,15 @@ fn test_server_mutable_operations() {
         .unwrap();
 
     // Test mutable access and modification
-    if let Some(server) = servers.get_server_mut(&21080) {
+    if let Some(server) = servers.get_server_mut(21080) {
         *server.router_mut() = server
             .router()
             .clone()
             .route("/api/v2", get(|| async { "api v2" }));
     }
 
-    assert!(servers.get_server_mut(&21080).is_some());
-    assert!(servers.get_server_mut(&9999).is_none());
+    assert!(servers.get_server_mut(21080).is_some());
+    assert!(servers.get_server_mut(9999).is_none());
 
     let ports: Vec<u16> = servers.ports();
     assert_eq!(ports.len(), 2);
@@ -171,9 +171,9 @@ fn test_ipv6_support() {
 
     let servers = app.world().get_resource::<WebServerManager>().unwrap();
 
-    assert_eq!(servers.get_server(&22080).unwrap().ip(), localhost_v6);
-    assert_eq!(servers.get_server(&22081).unwrap().ip(), localhost_v4);
-    assert_eq!(servers.get_server(&22082).unwrap().ip(), unspecified_v4);
+    assert_eq!(servers.get_server(22080).unwrap().ip(), localhost_v6);
+    assert_eq!(servers.get_server(22081).unwrap().ip(), localhost_v4);
+    assert_eq!(servers.get_server(22082).unwrap().ip(), unspecified_v4);
 }
 
 #[test]
@@ -182,7 +182,7 @@ fn test_backward_compatibility() {
 
     // Test old single config format
     app.world_mut().insert_resource(WebServerConfig {
-        ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+        ip: IpAddr::V4(Ipv4Addr::LOCALHOST),
         port: 8080,
     });
 
@@ -192,15 +192,15 @@ fn test_backward_compatibility() {
     assert_eq!(servers.len(), 1);
     assert!(servers.has_server(&8080));
 
-    let server = servers.get_server(&8080).unwrap();
-    assert_eq!(server.ip(), IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
+    let server = servers.get_server(8080).unwrap();
+    assert_eq!(server.ip(), IpAddr::V4(Ipv4Addr::LOCALHOST));
 
     // Test that routes can be added to the legacy port
     app.route("/old", get(|| async { Html("old config") }));
 
     // Should still have only one server (the default route creates the default server)
     let servers = app.world().get_resource::<WebServerManager>().unwrap();
-    assert!(servers.len() >= 1);
+    assert!(!servers.is_empty());
 }
 
 #[test]
@@ -218,34 +218,100 @@ fn test_multiple_ports_same_ip() {
         .unwrap();
 
     assert_eq!(servers.len(), 3);
-    assert_eq!(servers.get_server(&23080).unwrap().ip(), ip);
-    assert_eq!(servers.get_server(&23081).unwrap().ip(), ip);
-    assert_eq!(servers.get_server(&23082).unwrap().ip(), ip);
+    assert_eq!(servers.get_server(23080).unwrap().ip(), ip);
+    assert_eq!(servers.get_server(23081).unwrap().ip(), ip);
+    assert_eq!(servers.get_server(23082).unwrap().ip(), ip);
 }
 
 #[test]
 fn test_port_collision_handling() {
     let mut servers = WebServerManager::default();
+    let listener = std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
     servers
         .add_server(WebServer::new(
             Ipv4Addr::LOCALHOST.into(),
-            24080,
+            port,
             Router::new(),
         ))
         .unwrap();
 
-    // This should fail because port 24080 is already taken, but we'll ignore the error for this test
-    let _ = servers.add_server(WebServer::new(
+    let original_status = servers.get_server(port).unwrap().status();
+    let original_error = servers.server_error(&port).unwrap().to_string();
+    let result = servers.add_server(WebServer::new(
         Ipv4Addr::UNSPECIFIED.into(),
-        24080,
+        port,
         Router::new(),
     ));
 
+    assert!(matches!(
+        result,
+        Err(WebServerError::ServerAlreadyRunning { port: error_port }) if error_port == port
+    ));
     assert_eq!(servers.len(), 1);
     assert_eq!(
-        servers.get_server(&24080).unwrap().ip(),
+        servers.get_server(port).unwrap().ip(),
         IpAddr::V4(Ipv4Addr::LOCALHOST)
     );
+    assert_eq!(servers.get_server(port).unwrap().status(), original_status);
+    assert_eq!(servers.server_error(&port), Some(original_error.as_str()));
+}
+
+#[test]
+fn test_port_bind_failure_schedules_retry() {
+    let listener = std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
+
+    let error = WebServerManager::test_bind(ip, port).unwrap_err();
+    assert!(matches!(
+        error,
+        WebServerError::BindFailed { ip: error_ip, port: error_port, source }
+            if error_ip == ip
+                && error_port == port
+                && source.kind() == std::io::ErrorKind::AddrInUse
+    ));
+
+    let mut servers = WebServerManager::default();
+    servers
+        .add_server(WebServer::new(ip, port, Router::new()))
+        .unwrap();
+
+    let server = servers.get_server(port).unwrap();
+    assert_eq!(server.status(), crate::server::ServerStatus::Retrying);
+    assert!(server.last_error().is_some());
+    assert!(!server.should_retry());
+    assert!(!servers.server_failed(&port));
+
+    drop(listener);
+    assert!(WebServerManager::test_bind(ip, port).is_ok());
+}
+
+#[test]
+fn test_graceful_shutdown_timeout_result() {
+    let mut server = WebServer::new(Ipv4Addr::LOCALHOST.into(), 0, Router::new());
+    server.set_status(crate::server::ServerStatus::Running);
+
+    let completed =
+        async_io::block_on(server.graceful_shutdown_with_timeout(std::time::Duration::ZERO));
+    assert!(completed);
+    assert_eq!(server.status(), crate::server::ServerStatus::Stopped);
+    assert_eq!(server.count_active_connections(), 0);
+
+    server.set_status(crate::server::ServerStatus::Running);
+    let guard = server.new_connection();
+    server.graceful_shutdown();
+    assert!(server.shutdown_requested());
+    assert!(!server.status().can_start());
+
+    let completed =
+        async_io::block_on(server.graceful_shutdown_with_timeout(std::time::Duration::ZERO));
+    assert!(!completed);
+    assert_eq!(server.status(), crate::server::ServerStatus::Stopped);
+    assert_eq!(server.count_active_connections(), 1);
+
+    drop(guard);
+    assert_eq!(server.count_active_connections(), 0);
 }
 
 #[test]
@@ -275,7 +341,7 @@ fn test_utility_methods_usage() {
     let mut app = create_test_app();
 
     assert_eq!(app.server_count(), 0);
-    assert!(app.routed_ports().is_empty());
+    assert_eq!(app.routed_ports(), [] as [u16; 0]);
     app.add_server(IpAddr::V4(Ipv4Addr::LOCALHOST), 25080);
     app.add_server(IpAddr::V4(Ipv4Addr::LOCALHOST), 25081);
     app.add_server(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 25082);
@@ -315,9 +381,9 @@ fn test_add_server_port_convenience() {
         .port_route(26082, "/health", get(|| async { Html("Health") }));
 
     let servers = app.world().get_resource::<WebServerManager>().unwrap();
-    assert_eq!(servers.get_server(&26080).unwrap().ip(), DEFAULT_IP);
-    assert_eq!(servers.get_server(&26081).unwrap().ip(), DEFAULT_IP);
-    assert_eq!(servers.get_server(&26082).unwrap().ip(), DEFAULT_IP);
+    assert_eq!(servers.get_server(26080).unwrap().ip(), DEFAULT_IP);
+    assert_eq!(servers.get_server(26081).unwrap().ip(), DEFAULT_IP);
+    assert_eq!(servers.get_server(26082).unwrap().ip(), DEFAULT_IP);
 
     assert_eq!(app.server_count(), 3);
 }

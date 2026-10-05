@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 /// Sanitize the file path to prevent directory traversal attacks
+#[must_use]
 pub fn sanitize_path(path: &str) -> String {
     // Remove any ".." components and ensure we stay within our allowed directory
     let path = path.replace("..", "");

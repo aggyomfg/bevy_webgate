@@ -58,7 +58,9 @@ impl WebServerManager {
             .iter_mut()
             .filter(|(_, server)| server.status().can_start())
             .filter_map(|(port, server)| {
-                if !server.task_store().contains_key(&TaskType::Server) {
+                if server.task_store().contains_key(&TaskType::Server) {
+                    None
+                } else {
                     // Check if this is a retry attempt and if it's time to retry
                     if server.status() == crate::server::ServerStatus::Retrying {
                         if server.should_retry() {
@@ -72,8 +74,6 @@ impl WebServerManager {
                         server.set_status(crate::server::ServerStatus::Starting);
                         Some(*port)
                     }
-                } else {
-                    None
                 }
             })
             .collect();
@@ -90,6 +90,8 @@ impl WebServerManager {
         }
     }
 
+    /// # Errors
+    /// Returns an error if a server is already registered on the same port.
     pub fn add_server(&mut self, server: WebServer) -> WebServerResult<()> {
         let port = server.port();
         let ip = server.ip();
@@ -99,7 +101,7 @@ impl WebServerManager {
 
         // Try to test bind, but don't fail immediately - instead set server to retry mode
         match Self::test_bind(ip, port) {
-            Ok(_) => {
+            Ok(()) => {
                 // Bind test passed, add server normally
                 self.0.insert(port, server);
             }
@@ -132,19 +134,21 @@ impl WebServerManager {
     }
 
     /// Get the last error for a server, if any
+    #[must_use]
     pub fn server_error(&self, port: &WebPort) -> Option<&str> {
         self.0.get(port).and_then(|server| server.last_error())
     }
 
     /// Check if a server has failed to start
+    #[must_use]
     pub fn server_failed(&self, port: &WebPort) -> bool {
         self.0
             .get(port)
-            .map(|server| server.status() == ServerStatus::Failed)
-            .unwrap_or(false)
+            .is_some_and(|server| server.status() == ServerStatus::Failed)
     }
 
     /// Get all servers with their status and any errors
+    #[must_use]
     pub fn server_status_report(&self) -> Vec<(WebPort, ServerStatus, Option<String>)> {
         self.0
             .iter()
@@ -152,14 +156,14 @@ impl WebServerManager {
                 (
                     *port,
                     server.status(),
-                    server.last_error().map(|s| s.to_string()),
+                    server.last_error().map(std::string::ToString::to_string),
                 )
             })
             .collect()
     }
 
     pub fn stop_all(&mut self) {
-        for (_, server) in self.0.iter_mut() {
+        for server in self.0.values_mut() {
             server.stop();
         }
         self.0.clear();
@@ -199,7 +203,7 @@ impl WebServerManager {
         }
 
         // Request the graceful shutdown immediately
-        self.graceful_shutdown(&port);
+        self.graceful_shutdown(port);
 
         let port = *port;
 
@@ -236,32 +240,41 @@ impl WebServerManager {
         results
     }
 
+    #[must_use]
     pub fn has_server(&self, port: &WebPort) -> bool {
         self.0.contains_key(port)
     }
 
+    #[must_use]
     pub fn ports(&self) -> Vec<WebPort> {
         self.0.keys().copied().collect()
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[must_use]
     pub fn shutdown_requested(&self, port: &WebPort) -> bool {
         self.0
             .get(port)
-            .map(|server| server.shutdown_requested())
-            .unwrap_or(false)
+            .is_some_and(super::WebServer::shutdown_requested)
     }
 
+    #[must_use]
     pub fn active_connections(&self, port: &WebPort) -> usize {
         self.0
             .get(port)
-            .map(|server| server.count_active_connections())
-            .unwrap_or(0)
+            .map_or(0, super::WebServer::count_active_connections)
     }
 
+    #[must_use]
     pub fn shutdown_status(&self) -> HashMap<WebPort, (bool, usize)> {
         self.0
             .iter()
@@ -273,12 +286,13 @@ impl WebServerManager {
             .collect()
     }
 
+    #[must_use]
     pub fn router(&self, port: &WebPort) -> Option<&Router> {
-        self.0.get(port).map(|server| server.router())
+        self.0.get(port).map(super::WebServer::router)
     }
 
     pub fn router_mut(&mut self, port: &WebPort) -> Option<&mut Router> {
-        self.0.get_mut(port).map(|server| server.router_mut())
+        self.0.get_mut(port).map(super::WebServer::router_mut)
     }
 
     pub fn set_router(&mut self, port: &WebPort, router: Router) {
@@ -297,13 +311,15 @@ impl WebServerManager {
         self.0.iter_mut()
     }
 
-    pub(crate) fn get_server(&self, port: &WebPort) -> Option<&WebServer> {
-        self.0.get(port)
+    pub(crate) fn get_server(&self, port: WebPort) -> Option<&WebServer> {
+        self.0.get(&port)
     }
-    pub(crate) fn get_server_mut(&mut self, port: &WebPort) -> Option<&mut WebServer> {
-        self.0.get_mut(port)
+    pub(crate) fn get_server_mut(&mut self, port: WebPort) -> Option<&mut WebServer> {
+        self.0.get_mut(&port)
     }
 
+    /// # Errors
+    /// Returns an error if the server is not found or already has a running task.
     pub fn start_server(
         &mut self,
         port: &WebPort,
@@ -333,33 +349,29 @@ impl WebServerManager {
                 if let Err(err) = WebServer::run(port).await {
                     error!("bevy_webserver on port {} failed with: {}", port, err);
                     // Store error in server and schedule retry
-                    let _ = AsyncWorld
-                        .resource::<WebServerManager>()
-                        .get_mut(|manager| {
-                            if let Some(server) = manager.get_server_mut(&port) {
-                                server.set_error(err.to_string());
-                                // Check if this is a bind error and schedule retry
-                                if err.to_string().contains("already in use")
-                                    || err.to_string().contains("bind")
-                                {
-                                    server.schedule_retry();
-                                } else {
-                                    // For non-bind errors, set to Failed without retry
-                                    server.set_status(crate::server::ServerStatus::Failed);
-                                }
+                    let _ = AsyncWorld.resource::<Self>().get_mut(|manager| {
+                        if let Some(server) = manager.get_server_mut(port) {
+                            server.set_error(err.to_string());
+                            // Check if this is a bind error and schedule retry
+                            if err.to_string().contains("already in use")
+                                || err.to_string().contains("bind")
+                            {
+                                server.schedule_retry();
+                            } else {
+                                // For non-bind errors, set to Failed without retry
+                                server.set_status(crate::server::ServerStatus::Failed);
                             }
-                            Ok::<(), bevy_defer::AccessError>(())
-                        });
+                        }
+                        Ok::<(), bevy_defer::AccessError>(())
+                    });
                 } else {
                     // Server started successfully, update status
-                    let _ = AsyncWorld
-                        .resource::<WebServerManager>()
-                        .get_mut(|manager| {
-                            if let Some(server) = manager.get_server_mut(&port) {
-                                server.set_status(crate::server::ServerStatus::Running);
-                            }
-                            Ok::<(), bevy_defer::AccessError>(())
-                        });
+                    let _ = AsyncWorld.resource::<Self>().get_mut(|manager| {
+                        if let Some(server) = manager.get_server_mut(port) {
+                            server.set_status(crate::server::ServerStatus::Running);
+                        }
+                        Ok::<(), bevy_defer::AccessError>(())
+                    });
                 }
                 Ok(())
             }
@@ -382,7 +394,7 @@ impl WebServerManager {
         let start_time = std::time::Instant::now();
         loop {
             let shutdown_result = AsyncWorld.run(|world| {
-                let manager = world.resource::<WebServerManager>();
+                let manager = world.resource::<Self>();
 
                 // Check if server still exists and has active connections
                 if manager.has_server(&port) {
@@ -423,7 +435,7 @@ impl WebServerManager {
 
         // Force stop and remove server after timeout
         AsyncWorld.run(|world| {
-            let mut manager = world.resource_mut::<WebServerManager>();
+            let mut manager = world.resource_mut::<Self>();
             manager.remove_server(&port);
         });
         Ok(())
@@ -431,6 +443,9 @@ impl WebServerManager {
 
     /// Wait for server to start and return result
     /// This method will block until the server either starts successfully or fails
+    ///
+    /// # Errors
+    /// Returns an error if the server is not found, failed to start, or did not start within `timeout`.
     pub async fn wait_for_server_start(
         &self,
         port: &WebPort,
@@ -445,29 +460,28 @@ impl WebServerManager {
                     ServerStatus::Failed => {
                         if let Some(error) = server.last_error() {
                             return Err(WebServerError::io_error(
-                                format!("server startup on port {}", port),
-                                std::io::Error::new(std::io::ErrorKind::Other, error.to_string()),
-                            ));
-                        } else {
-                            return Err(WebServerError::io_error(
-                                format!("server startup on port {}", port),
-                                std::io::Error::new(
-                                    std::io::ErrorKind::Other,
-                                    "Server failed to start",
-                                ),
+                                format!("server startup on port {port}"),
+                                std::io::Error::other(error.to_string()),
                             ));
                         }
+                        return Err(WebServerError::io_error(
+                            format!("server startup on port {port}"),
+                            std::io::Error::other("Server failed to start"),
+                        ));
                     }
                     ServerStatus::Starting => {
                         // Still starting, continue waiting
                         if start_time.elapsed() > timeout {
                             return Err(WebServerError::timeout(
-                                format!("starting server on port {}", port),
-                                timeout.as_millis() as u64,
+                                format!("starting server on port {port}"),
+                                u64::try_from(timeout.as_millis()).unwrap_or(u64::MAX),
                             ));
                         }
                     }
-                    _ => {
+                    ServerStatus::Retrying
+                    | ServerStatus::Shutdown
+                    | ServerStatus::ShuttingDown
+                    | ServerStatus::Stopped => {
                         return Err(WebServerError::config_error(
                             "server_status",
                             format!(
@@ -488,25 +502,25 @@ impl WebServerManager {
     }
 
     /// Test if we can bind to a specific IP and port using reliable OS-level port checking
+    ///
+    /// # Errors
+    /// Returns an error if the port is already in use or cannot be bound on `ip`.
     pub fn test_bind(ip: IpAddr, port: WebPort) -> WebServerResult<()> {
         debug!("Testing bind on {}:{}", ip, port);
 
         // Check if port is free by attempting to bind to 0.0.0.0
-        match TcpListener::bind(("0.0.0.0", port)) {
-            Ok(listener) => {
-                // Successfully bound, so port is free
-                drop(listener);
-            }
-            Err(_) => {
-                // Could not bind to 0.0.0.0, port is definitely occupied
-                let error_msg = format!("Port {} is already in use", port);
-                error!("{}:{}: {}", ip, port, error_msg);
-                return Err(WebServerError::bind_failed(
-                    ip,
-                    port,
-                    std::io::Error::new(std::io::ErrorKind::AddrInUse, error_msg),
-                ));
-            }
+        if let Ok(listener) = TcpListener::bind(("0.0.0.0", port)) {
+            // Successfully bound, so port is free
+            drop(listener);
+        } else {
+            // Could not bind to 0.0.0.0, port is definitely occupied
+            let error_msg = format!("Port {port} is already in use");
+            error!("{}:{}: {}", ip, port, error_msg);
+            return Err(WebServerError::bind_failed(
+                ip,
+                port,
+                std::io::Error::new(std::io::ErrorKind::AddrInUse, error_msg),
+            ));
         }
 
         // If the port appears free, also verify with the async_io bind attempt

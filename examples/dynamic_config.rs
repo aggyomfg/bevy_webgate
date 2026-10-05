@@ -19,8 +19,7 @@ fn configure_routes(port: WebPort) -> Router {
         "/",
         get(move || async move {
             Html(format!(
-                "<h1>Server on Port {}</h1><p>Visit <a href='http://localhost:{}'>Port {}</a></p>",
-                port, port, port
+                "<h1>Server on Port {port}</h1><p>Visit <a href='http://localhost:{port}'>Port {port}</a></p>"
             ))
         }),
     )
@@ -65,7 +64,7 @@ fn dynamic_reconfigure_servers(
             manager.remove_server(&8081);
             manager.remove_server(&8082);
         } else {
-            let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+            let ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
             let _ = manager.start_server(&8080, &async_executor);
             let _ = manager.add_server(WebServer::new(ip, 8081, configure_routes(8081)));
             let _ = manager.add_server(WebServer::new(ip, 8082, configure_routes(8082)));

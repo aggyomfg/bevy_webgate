@@ -1,4 +1,5 @@
 use axum::extract::Path;
+use axum::http::StatusCode;
 use axum::routing::post;
 use axum::{
     response::Html,
@@ -14,7 +15,7 @@ use bevy::reflect::{
 };
 use bevy_defer::AsyncWorld;
 use bevy_webgate::prelude::*;
-use maud::{html, Markup, PreEscaped};
+use maud::{html, Markup};
 
 pub struct EditorCorePlugin;
 
@@ -45,8 +46,7 @@ pub fn reset_selected_entity_if_entity_despawned(
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, WebInspectorPlugin))
-        .insert_resource(SelectedEntity::default())
+        .add_plugins((DefaultPlugins, EditorCorePlugin, WebInspectorPlugin))
         .add_systems(Startup, setup)
         .run();
 }
@@ -80,124 +80,81 @@ struct FieldUpdate {
 async fn update_component_field(
     Path((entity_index, component_name, field_name)): Path<(u32, String, String)>,
     Json(update): Json<FieldUpdate>,
-) -> Html<String> {
-    AsyncWorld.run(|world| {
+) -> ([(&'static str, &'static str); 1], StatusCode) {
+    let status = AsyncWorld.run(|world| {
         let entity = Entity::from_raw_u32(entity_index).unwrap_or(Entity::PLACEHOLDER);
 
-        // Get type registry for reflection
-        let type_registry = world.resource::<AppTypeRegistry>().clone();
-        let type_registry = type_registry.read();
-
-        let mut stuff = None;
-
-        for component in world.components().iter_registered() {
-            if let Some(info) = type_registry.get_type_info(component.type_id().unwrap()) {
-                let component_short_name = info.type_path().split("::").last().unwrap_or("");
-
-                if component_short_name == component_name {
-                    stuff.replace((info.clone(), component.type_id().unwrap(), component.id()));
-                }
-            }
+        match apply_field_update(world, entity, &component_name, &field_name, update.value) {
+            Some(()) => StatusCode::NO_CONTENT,
+            None => StatusCode::UNPROCESSABLE_ENTITY,
         }
-        if let Some((_info, type_id, id)) = stuff {
-            if let Ok(mut entity_mut) = world.get_entity_mut(entity) {
-                // Get mutable reference to component
-                if let Ok(mut component_ref) = entity_mut.get_mut_by_id(id) {
-                    let reflect_data = type_registry.get(type_id).unwrap();
-                    let reflect_from_ptr = reflect_data.data::<ReflectFromPtr>().unwrap();
-                    // SAFE: `value` is of type `Reflected`, which the `ReflectFromPtr` was created for
-                    let value = unsafe { reflect_from_ptr.as_reflect_mut(component_ref.as_mut()) };
-                    if let Ok(struct_info) = value.reflect_mut().as_struct() {
-                        // Find the field and update it
-
-                        let field = struct_info.field_mut(&field_name).unwrap();
-
-                        let field_type_name = field
-                            .try_as_reflect()
-                            .unwrap()
-                            .reflect_type_ident()
-                            .unwrap();
-
-                        // Handle different field types
-                        match field_type_name {
-                            "Vec3" => {
-                                if let Ok(vec3_value) =
-                                    serde_json::from_value::<[f32; 3]>(update.value)
-                                {
-                                    let vec3 =
-                                        Vec3::new(vec3_value[0], vec3_value[1], vec3_value[2]);
-                                    field.apply(&vec3);
-                                }
-                            }
-                            "f32" => {
-                                if let Ok(float_value) = serde_json::from_value::<f32>(update.value)
-                                {
-                                    field.apply(&float_value);
-                                }
-                            }
-                            "String" => {
-                                if let Ok(string_value) =
-                                    serde_json::from_value::<String>(update.value)
-                                {
-                                    field.apply(&string_value);
-                                }
-                            }
-                            "bool" => {
-                                if let Ok(bool_value) = serde_json::from_value::<bool>(update.value)
-                                {
-                                    field.apply(&bool_value);
-                                }
-                            }
-                            "Color" => {
-                                if let Ok(color_value) =
-                                    serde_json::from_value::<[f32; 4]>(update.value)
-                                {
-                                    let color = Color::srgba(
-                                        color_value[0],
-                                        color_value[1],
-                                        color_value[2],
-                                        color_value[3],
-                                    );
-                                    field.apply(&color);
-                                }
-                            }
-                            "Quat" => {
-                                if let Ok(quat_value) =
-                                    serde_json::from_value::<[f32; 4]>(update.value)
-                                {
-                                    let quat = Quat::from_xyzw(
-                                        quat_value[0],
-                                        quat_value[1],
-                                        quat_value[2],
-                                        quat_value[3],
-                                    );
-                                    field.apply(&quat);
-                                }
-                            }
-                            // Add more type handlers as needed
-                            _ => {
-                                /*// Try to deserialize directly if type implements FromReflect
-                                if let Ok(value) =
-                                    serde_json::from_value(update.value.clone())
-                                {
-                                    field.apply(&value);
-                                }*/
-                            }
-                        }
-                        return Html("Field updated successfully".to_string());
-                    }
-                }
-            }
-        }
-
-        Html("Failed to update field".to_string())
-    })
+    });
+    ([("HX-Trigger", "entity-list-changed")], status)
 }
 
-// State structure to hold component values
-#[derive(serde::Deserialize, serde::Serialize)]
-struct ComponentValue {
+fn apply_field_update(
+    world: &mut World,
+    entity: Entity,
+    component_name: &str,
+    field_name: &str,
     value: serde_json::Value,
+) -> Option<()> {
+    let type_registry = world.resource::<AppTypeRegistry>().clone();
+    let type_registry = type_registry.read();
+
+    if component_name == "Name" && field_name == "value" {
+        let name = serde_json::from_value::<String>(value).ok()?;
+        world.get_mut::<Name>(entity)?.set(name);
+        return Some(());
+    }
+
+    let (type_id, id) = world.components().iter_registered().find_map(|component| {
+        let type_id = component.type_id()?;
+        let info = type_registry.get_type_info(type_id)?;
+        let short_name = info.type_path().split("::").last().unwrap_or("");
+        (short_name == component_name).then_some((type_id, component.id()))
+    })?;
+
+    let mut entity_mut = world.get_entity_mut(entity).ok()?;
+    let mut component_ref = entity_mut.get_mut_by_id(id).ok()?;
+    let reflect_from_ptr = type_registry.get(type_id)?.data::<ReflectFromPtr>()?;
+    // SAFE: `value` is of type `Reflected`, which the `ReflectFromPtr` was created for
+    let reflected = unsafe { reflect_from_ptr.as_reflect_mut(component_ref.as_mut()) };
+    drop(type_registry);
+    let struct_info = reflected.reflect_mut().as_struct().ok()?;
+    let field = struct_info.field_mut(field_name)?;
+    let field_type_name = field.try_as_reflect()?.reflect_type_ident()?;
+
+    match field_type_name {
+        "Vec3" => {
+            let [x, y, z] = serde_json::from_value::<[f32; 3]>(value).ok()?;
+            field.try_apply(&Vec3::new(x, y, z)).ok()?;
+        }
+        "f32" => {
+            let float_value = serde_json::from_value::<f32>(value).ok()?;
+            field.try_apply(&float_value).ok()?;
+        }
+        "String" => {
+            let string_value = serde_json::from_value::<String>(value).ok()?;
+            field.try_apply(&string_value).ok()?;
+        }
+        "bool" => {
+            let bool_value = serde_json::from_value::<bool>(value).ok()?;
+            field.try_apply(&bool_value).ok()?;
+        }
+        "Color" => {
+            let [r, g, b, a] = serde_json::from_value::<[f32; 4]>(value).ok()?;
+            field.try_apply(&Color::srgba(r, g, b, a)).ok()?;
+        }
+        "Quat" => {
+            let [x, y, z, w] = serde_json::from_value::<[f32; 4]>(value).ok()?;
+            field.try_apply(&Quat::from_xyzw(x, y, z, w)).ok()?;
+        }
+        // Add more type handlers as needed
+        _ => return None,
+    }
+
+    Some(())
 }
 
 // ... [Previous plugin and struct definitions remain the same until render_layout]
@@ -208,7 +165,9 @@ async fn render_layout() -> Html<String> {
             html {
                 head {
                     title { "Bevy Web Inspector" }
-                    script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.10/htmx.min.js" {}
+                    script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.11/dist/htmx.min.js"
+                        integrity="sha384-2OatzQy1H+Zd/IIrjr1TcuDGqLXeHhbooAyJY1KdQMKnr4LZ22k31GBLdYKHmVjg"
+                        crossorigin="anonymous" {}
                     script src="https://cdn.jsdelivr.net/gh/Emtyloc/json-enc-custom@main/json-enc-custom.js" {}
                     link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" {}
                     script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js" {}
@@ -220,7 +179,7 @@ async fn render_layout() -> Html<String> {
                             // Entity list panel
                             div class="col-3 border-end border-secondary"
                                 hx-get="/entities"
-                                hx-trigger="load"
+                                hx-trigger="load, entity-list-changed from:body"
                                 hx-swap="innerHTML" {}
                             // Inspector panel
                             div id="inspector"
@@ -302,10 +261,13 @@ fn render_component(
     _component_name: &str,
 ) -> Markup {
     let binding = component_info.name();
-    let (_, name) = binding.rsplit_once("::").unwrap();
     let type_info = component_info
         .type_id()
         .and_then(|type_id| type_registry.get_type_info(type_id));
+    let type_path = type_info.map_or(&*binding, |info| info.type_path());
+    let name = type_path
+        .rsplit_once("::")
+        .map_or(type_path, |(_, name)| name);
 
     // Get the actual component data
     let component_data = if let Some(type_id) = component_info.type_id() {
@@ -343,10 +305,12 @@ fn render_component(
 fn render_component_list(entity: Entity, world: &World) -> Markup {
     let type_registry = world.resource::<AppTypeRegistry>().read();
 
+    let components = world.inspect_entity(entity).into_iter().flatten();
+
     html! {
         div class="component-list p-3" {
             h3 class="h5 text-light mb-3" { "Entity Components" }
-            @for component_info in world.inspect_entity(entity).unwrap() {
+            @for component_info in components {
                 (render_component(
                     component_info.clone(),
                     &type_registry,
@@ -365,43 +329,53 @@ fn render_struct(
     component_name: &str,
     component_data: &dyn Reflect,
 ) -> Markup {
-    let struct_data = component_data.reflect_ref().as_struct().unwrap();
+    let Ok(struct_data) = component_data.reflect_ref().as_struct() else {
+        return html! {};
+    };
 
     html! {
         div class="struct-fields card bg-secondary" {
             div class="card-body" {
                 @for field in struct_info.iter() {
-                    div class="mb-3" {
+                    form class="mb-3"
+                        hx-put={"/component/" (entity.index()) "/" (component_name) "/" (field.name())}
+                        parse-types="true"
+                        hx-ext="json-enc-custom"
+                        hx-trigger="change"
+                        hx-swap="none" {
                         label class="form-label text-light small" { (field.name()) }
-                        @if field.type_path_table().short_path() == "glam::Vec3" {
-                            @let vec3 = struct_data.field(field.name()).unwrap().try_downcast_ref::<Vec3>().unwrap();
+                        @let field_data = struct_data.field(field.name());
+                        @let coordinates = field_data.and_then(|value| {
+                            value.try_downcast_ref::<Vec3>().map(|vector| vec![("x", vector.x), ("y", vector.y), ("z", vector.z)]).or_else(|| {
+                                value.try_downcast_ref::<Quat>().map(|rotation| vec![("x", rotation.x), ("y", rotation.y), ("z", rotation.z), ("w", rotation.w)])
+                            })
+                        });
+                        @if let Some(coordinates) = coordinates {
                             div class="row g-2" {
-                                @for (axis, value) in [("x", vec3.x), ("y", vec3.y), ("z", vec3.z)] {
+                                @for (axis, value) in coordinates {
                                     div class="col" {
                                         input type="number"
                                             class="form-control form-control-sm bg-dark text-light border-secondary"
-                                            name=(axis)
+                                            name="value"
+                                            aria-label=(axis)
                                             value=(value)
                                             step="0.1"
-                                            hx-put={"/component/" (entity.index()) "/" (component_name) "/" (field.name())}
-                                            hx-headers=(PreEscaped(r#"{"Content-Type": "application/json"}"#))
-                                            parse-types="true"
-                                            hx-ext="json-enc-custom"
-                                            hx-trigger="change" {}
+                                            required {}
                                     }
                                 }
                             }
                         } @else {
-                            @let field_value = struct_data.field(field.name()).unwrap();
-                            input type="text"
+                            @let editable = field_data.is_some_and(|value| value.try_downcast_ref::<f32>().is_some() || value.try_downcast_ref::<bool>().is_some() || value.try_downcast_ref::<String>().is_some());
+                            @let field_value = field_data.map_or_else(String::new, |value| {
+                                value.try_downcast_ref::<String>().map_or_else(|| format!("{value:?}"), Clone::clone)
+                            });
+                            input type=(if field_data.is_some_and(|value| value.try_downcast_ref::<f32>().is_some()) { "number" } else if field_data.is_some_and(|value| value.try_downcast_ref::<bool>().is_some()) { "checkbox" } else { "text" })
                                 class="form-control form-control-sm bg-dark text-light border-secondary"
-                                name=(field.name())
-                                value=(format!("{:?}", field_value))
-                                hx-put={"/component/" (entity.index()) "/" (component_name) "/" (field.name())}
-                                hx-headers=(PreEscaped(r#"{"Content-Type": "application/json"}"#))
-                                parse-types="true"
-                                hx-ext="json-enc-custom"
-                                hx-trigger="change" {}
+                                name="value"
+                                value=(field_value)
+                                checked[field_data.and_then(|value| value.try_downcast_ref::<bool>()).copied().unwrap_or(false)]
+                                readonly[!editable]
+                                step="any" {}
                         }
                     }
                 }
@@ -410,41 +384,18 @@ fn render_struct(
     }
 }
 
-fn render_enum(enum_info: &EnumInfo) -> Markup {
+fn render_enum(enum_info: &EnumInfo, component_data: &dyn Reflect) -> Markup {
+    let current_variant = component_data
+        .reflect_ref()
+        .as_enum()
+        .ok()
+        .map(bevy::reflect::enums::Enum::variant_name);
     html! {
         div class="enum-variants" {
             select class="form-select form-select-sm bg-dark text-light border-secondary"
-                   hx-put="/component/variant"
-                   hx-headers=(PreEscaped(r#"{"Content-Type": "application/json"}"#))
-                   parse-types="true"
-                   hx-ext="json-enc-custom"
-                   hx-trigger="change" {
+                   disabled {
                 @for variant in enum_info.iter() {
-                    option value=(variant.name()) { (variant.name()) }
-                }
-            }
-        }
-    }
-}
-
-fn _render_vec3_input(entity: Entity, field_name: &str, value: Vec3) -> Markup {
-    html! {
-        div class="vector-input mb-3" {
-            label class="form-label text-light small" { (field_name) }
-            div class="row g-2" {
-                @for (component, val) in [("x", value.x), ("y", value.y), ("z", value.z)] {
-                    div class="col" {
-                        input type="number"
-                              class="form-control form-control-sm bg-dark text-light border-secondary"
-                              name=(component)
-                              value=(val)
-                              step="10"
-                              hx-put={"/transform/" (serde_json::to_string(&entity).unwrap()) "/" (field_name)}
-                              hx-headers=(PreEscaped(r#"{"Content-Type": "application/json"}"#))
-                              parse-types="true"
-                              hx-ext="json-enc-custom"
-                              hx-trigger="change" {}
-                    }
+                    option value=(variant.name()) selected[current_variant == Some(variant.name())] { (variant.name()) }
                 }
             }
         }
@@ -464,19 +415,14 @@ fn get_named_entities(world: &mut World) -> Vec<(Entity, Option<String>)> {
         let name = name.map(|name| name.as_str().to_string());
 
         // Only include entities that have at least one reflected component
-        if world
-            .inspect_entity(entity)
-            .unwrap()
-            .filter(|info| {
+        if world.inspect_entity(entity).is_ok_and(|mut components| {
+            components.any(|info| {
                 let type_register = type_registry.clone();
                 let type_register = type_register.read();
-                type_register
-                    .get_type_info(info.type_id().unwrap())
-                    .is_some()
+                info.type_id()
+                    .is_some_and(|type_id| type_register.get_type_info(type_id).is_some())
             })
-            .next()
-            .is_some()
-        {
+        }) {
             entities.push((entity, name));
         }
     }
@@ -499,22 +445,20 @@ fn get_component_count(world: &World, entity: Entity) -> usize {
     let type_registry = type_registry.clone();
 
     // Only count reflected components
-    world
-        .inspect_entity(entity)
-        .unwrap()
-        .filter(move |info| {
-            let type_registry = type_registry.clone();
-            let type_registry = type_registry.read();
-            type_registry
-                .get_type_info(info.type_id().unwrap())
-                .is_some()
-        })
-        .count()
+    world.inspect_entity(entity).map_or(0, |components| {
+        components
+            .filter(|info| {
+                let type_registry = type_registry.read();
+                info.type_id()
+                    .is_some_and(|type_id| type_registry.get_type_info(type_id).is_some())
+            })
+            .count()
+    })
 }
 
 async fn select_entity(
     axum::extract::Path(entity_index): axum::extract::Path<u32>,
-) -> Html<String> {
+) -> ([(&'static str, &'static str); 1], Html<String>) {
     AsyncWorld.run(|world| {
         // Create entity from index and update selected entity
         let entity = Entity::from_raw_u32(entity_index).unwrap_or(Entity::PLACEHOLDER);
@@ -524,7 +468,7 @@ async fn select_entity(
     });
     // Return the updated inspector content
     let markup = render_inspector().await;
-    markup
+    ([("HX-Trigger", "entity-list-changed")], markup)
 }
 
 async fn render_inspector() -> Html<String> {
@@ -532,7 +476,7 @@ async fn render_inspector() -> Html<String> {
         let markup = html! {
             div class="inspector-container" {
                 @if let Some(selected_entity) = world.resource::<SelectedEntity>().0 {
-                    (render_component_list(selected_entity, &world))
+                    (render_component_list(selected_entity, world))
                 } @else {
                     p class="text-neutral-300 text-sm" { "Select an entity to inspect" }
                 }
@@ -551,13 +495,40 @@ fn render_type_info(
 ) -> Markup {
     match type_info {
         TypeInfo::Struct(info) => render_struct(info, entity, component_name, component_data),
-        TypeInfo::TupleStruct(info) => render_tuple_struct(info),
-        TypeInfo::Enum(info) => render_enum(info),
-        _ => html! { p { "Type not yet supported" } },
+        TypeInfo::TupleStruct(info) => {
+            render_tuple_struct(info, entity, component_name, component_data)
+        }
+        TypeInfo::Enum(info) => render_enum(info, component_data),
+        TypeInfo::Tuple(_)
+        | TypeInfo::List(_)
+        | TypeInfo::Array(_)
+        | TypeInfo::Map(_)
+        | TypeInfo::Set(_)
+        | TypeInfo::Opaque(_) => html! { p { "Type not yet supported" } },
     }
 }
 
-fn render_tuple_struct(tuple_struct_info: &TupleStructInfo) -> Markup {
+fn render_tuple_struct(
+    tuple_struct_info: &TupleStructInfo,
+    entity: Entity,
+    component_name: &str,
+    component_data: &dyn Reflect,
+) -> Markup {
+    if let Some(name) = component_data.downcast_ref::<Name>() {
+        return html! {
+            form hx-put={"/component/" (entity.index()) "/" (component_name) "/value"}
+                hx-ext="json-enc-custom"
+                hx-trigger="change"
+                hx-swap="none" {
+                input type="text"
+                    class="form-control form-control-sm bg-dark text-light border-secondary"
+                    name="value"
+                    aria-label="Name"
+                    value=(name.as_str()) {}
+            }
+        };
+    }
+    let tuple_data = component_data.reflect_ref().as_tuple_struct().ok();
     html! {
         div class="tuple-struct-fields" {
             @for (idx, _field) in tuple_struct_info.iter().enumerate() {
@@ -565,32 +536,16 @@ fn render_tuple_struct(tuple_struct_info: &TupleStructInfo) -> Markup {
                     label class="text-xs" { (idx) }
                     input type="text"
                           name=(idx.to_string())
-                          value=""
-                          hx-put={"/component/" (idx)}
-                          hx-headers=(PreEscaped(r#"{"Content-Type": "application/json"}"#))
-                          parse-types="true"
-                          hx-ext="json-enc-custom"
-                          hx-trigger="change" {}
+                          value=(tuple_data.and_then(|value| value.field(idx)).map_or_else(String::new, |value| format!("{value:?}")))
+                          readonly {}
                 }
             }
         }
     }
 }
 
-async fn update_component(
-    axum::extract::Path((entity, component)): axum::extract::Path<(Entity, String)>,
-    Json(value): Json<ComponentValue>,
-) -> Html<String> {
-    // Update component logic here
-    // Return updated component markup
-    Html("Updated".to_string())
-}
-
-async fn delete_component(
-    axum::extract::Path(entity): axum::extract::Path<Entity>,
-) -> Html<String> {
-    // Delete component logic here
-    Html("".to_string())
+async fn delete_component(axum::extract::Path(_entity): axum::extract::Path<Entity>) -> StatusCode {
+    StatusCode::NOT_IMPLEMENTED
 }
 
 // CSS styles for the inspector
@@ -640,3 +595,118 @@ select {
     color: rgb(212 212 216);
 }
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reflected_component_names_are_used_in_update_urls() {
+        let mut app = App::new();
+        app.register_type::<Transform>();
+        let entity = app.world_mut().spawn(Transform::default()).id();
+
+        let markup = render_component_list(entity, app.world()).into_string();
+
+        assert!(markup.contains(">Transform</h4>"));
+        assert!(markup.contains(&format!(
+            "/component/{}/Transform/translation",
+            entity.index()
+        )));
+        assert!(!markup.contains("Enable the debug feature"));
+    }
+
+    #[test]
+    fn vector_update_is_reflected_when_rendered_again() {
+        let mut app = App::new();
+        app.register_type::<Transform>();
+        let entity = app.world_mut().spawn(Transform::default()).id();
+
+        assert_eq!(
+            apply_field_update(
+                app.world_mut(),
+                entity,
+                "Transform",
+                "translation",
+                serde_json::json!([125.1, 2.0, 3.0])
+            ),
+            Some(())
+        );
+        let markup = render_component_list(entity, app.world()).into_string();
+        assert!(markup.contains("name=\"value\" aria-label=\"x\" value=\"125.1\""));
+        assert!(markup.contains("hx-trigger=\"change\" hx-swap=\"none\""));
+        assert_eq!(
+            app.world()
+                .get::<Transform>(entity)
+                .map(|transform| transform.translation),
+            Some(Vec3::new(125.1, 2.0, 3.0))
+        );
+    }
+
+    #[test]
+    fn invalid_vector_update_is_rejected() {
+        let mut app = App::new();
+        app.register_type::<Transform>();
+        let entity = app.world_mut().spawn(Transform::default()).id();
+
+        assert_eq!(
+            apply_field_update(
+                app.world_mut(),
+                entity,
+                "Transform",
+                "translation",
+                serde_json::json!("invalid")
+            ),
+            None
+        );
+        assert_eq!(
+            app.world()
+                .get::<Transform>(entity)
+                .map(|transform| transform.translation),
+            Some(Vec3::ZERO)
+        );
+    }
+
+    #[test]
+    fn name_update_refreshes_rendered_value() {
+        let mut app = App::new();
+        app.register_type::<Name>();
+        let entity = app.world_mut().spawn(Name::new("before")).id();
+        assert_eq!(
+            apply_field_update(
+                app.world_mut(),
+                entity,
+                "Name",
+                "value",
+                serde_json::json!("after")
+            ),
+            Some(())
+        );
+        assert_eq!(
+            app.world().get::<Name>(entity).map(Name::as_str),
+            Some("after")
+        );
+        let markup = render_component_list(entity, app.world()).into_string();
+        assert!(markup.contains(&format!("/component/{}/Name/value", entity.index())));
+        assert!(markup.contains("value=\"after\""));
+    }
+
+    #[test]
+    fn rotation_update_renders_four_numeric_coordinates() {
+        let mut app = App::new();
+        app.register_type::<Transform>();
+        let entity = app.world_mut().spawn(Transform::default()).id();
+        assert_eq!(
+            apply_field_update(
+                app.world_mut(),
+                entity,
+                "Transform",
+                "rotation",
+                serde_json::json!([0.0, 0.0, 0.0, 1.0])
+            ),
+            Some(())
+        );
+        let markup = render_component_list(entity, app.world()).into_string();
+        assert!(markup.contains("aria-label=\"w\" value=\"1\""));
+    }
+}

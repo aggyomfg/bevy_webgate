@@ -54,7 +54,7 @@ async fn slow_handler() -> axum::response::Html<&'static str> {
 
     for i in 1..=5 {
         std::thread::sleep(Duration::from_secs(1));
-        println!("Slow request progress: {}s", i);
+        println!("Slow request progress: {i}s");
     }
 
     println!("Slow request completed!");
@@ -64,15 +64,13 @@ async fn slow_handler() -> axum::response::Html<&'static str> {
 async fn status_handler() -> axum::response::Html<String> {
     let uptime = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+        .map_or(0, |duration| duration.as_secs());
 
     axum::response::Html(format!(
         "<h1>Server Status</h1>\
          <p>Server is running</p>\
-         <p>Current time: {}</p>\
-         <p>Try the <a href=\"/slow\">/slow</a> endpoint to test graceful shutdown behavior.</p>",
-        uptime
+         <p>Current time: {uptime}</p>\
+         <p>Try the <a href=\"/slow\">/slow</a> endpoint to test graceful shutdown behavior.</p>"
     ))
 }
 
