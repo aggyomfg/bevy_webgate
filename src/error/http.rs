@@ -12,6 +12,7 @@ impl Plugin for HttpErrorPlugin {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn create_error_html(code: &str, title: &str, message: &str) -> String {
     format!(
         r#"
@@ -183,10 +184,7 @@ fn create_error_html(code: &str, title: &str, message: &str) -> String {
     </div>
 </body>
 </html>
-    "#,
-        code = code,
-        title = title,
-        message = message
+    "#
     )
 }
 
@@ -196,10 +194,12 @@ pub struct HttpErrorResponses {
 }
 
 impl HttpErrorResponses {
+    #[must_use]
     pub fn get_response(&self, status: StatusCode) -> Option<&String> {
         self.responses.get(&status)
     }
 
+    #[must_use]
     pub fn get_response_or_default(&self, status: StatusCode) -> String {
         self.responses.get(&status).cloned().unwrap_or_else(|| {
             create_error_html(
@@ -210,12 +210,13 @@ impl HttpErrorResponses {
         })
     }
 
+    #[must_use]
     pub fn create_response(&self, status: StatusCode) -> Response {
         let html = self.get_response_or_default(status);
         Response::builder()
             .status(status)
             .header("Content-Type", "text/html")
-            .body(html.to_string().into())
+            .body(html.into())
             .unwrap_or_default()
     }
 }

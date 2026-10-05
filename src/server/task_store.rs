@@ -4,13 +4,13 @@ use dashmap::DashMap;
 use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum TaskType {
+pub enum TaskType {
     Server,
     Connection(usize),
 }
 
 #[derive(Clone, Debug, Default, Deref, DerefMut)]
-pub(crate) struct TaskStore(Arc<DashMap<TaskType, Task<AccessResult>>>);
+pub struct TaskStore(Arc<DashMap<TaskType, Task<AccessResult>>>);
 
 impl TaskStore {
     pub(crate) fn insert(&self, task_type: TaskType, task: Task<AccessResult>) {

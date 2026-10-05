@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub(crate) struct ConnectionTracker {
+pub struct ConnectionTracker {
     active_count: Arc<AtomicUsize>,
     total_count: Arc<AtomicUsize>,
 }
@@ -36,7 +36,7 @@ impl ConnectionTracker {
 }
 
 /// RAII guard that automatically decrements active connection count on drop
-pub(crate) struct ConnectionGuard {
+pub struct ConnectionGuard {
     active_count: Arc<AtomicUsize>,
 }
 

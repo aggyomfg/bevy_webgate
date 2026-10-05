@@ -1,4 +1,4 @@
 /target
 /database
 .idea
-Cargo.lock
+/.direnv

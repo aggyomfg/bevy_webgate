@@ -15,15 +15,15 @@ use std::net::{IpAddr, Ipv4Addr};
 /// including HTML, CSS, JavaScript, images, and JSON data.
 ///
 /// This example shows:
-/// - Using bevy_webgate utilities for efficient file serving
-/// - Proper MIME type handling with mime_guess crate
+/// - Using `bevy_webgate` utilities for efficient file serving
+/// - Proper MIME type handling with `mime_guess` crate
 /// - Index file serving (index.html)
 /// - Error handling for missing files
 /// - Directory browsing protection
 /// - API endpoints with standardized responses
 ///
 /// Run with: `cargo run --example file_server`
-/// Then visit: http://localhost:8080
+/// Then visit: <http://localhost:8080>
 fn main() {
     App::new()
         .add_plugins(MinimalPlugins)
@@ -60,11 +60,11 @@ fn main() {
 }
 
 async fn serve_static_file(Path(file_path): Path<String>) -> Response {
-    serve_file(&format!("examples/file_server_assets/{}", file_path)).await
+    serve_file(&format!("examples/file_server_assets/{file_path}")).await
 }
 
 async fn serve_custom_file(Path(file_path): Path<String>) -> Response {
-    serve_file(&format!("examples/file_server_assets/{}", file_path)).await
+    serve_file(&format!("examples/file_server_assets/{file_path}")).await
 }
 
 async fn serve_api_info() -> impl IntoResponse {
