@@ -3,7 +3,7 @@
   "timestamp": "2025-06-27T12:00:00Z",
   "server_info": {
     "name": "bevy_webgate",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "framework": "Axum + Bevy"
   },
   "features": [

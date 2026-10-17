@@ -6,7 +6,7 @@ use axum::{
     routing::{delete, get, put},
     Json,
 };
-use bevy::ecs::component::ComponentInfo;
+use bevy::ecs::component::{ComponentId, ComponentInfo};
 use bevy::ecs::entity::Entities;
 use bevy::prelude::*;
 use bevy::reflect::{
@@ -108,18 +108,21 @@ fn apply_field_update(
         return Some(());
     }
 
-    let (type_id, id) = world.components().iter_registered().find_map(|component| {
-        let type_id = component.type_id()?;
-        let info = type_registry.get_type_info(type_id)?;
-        let short_name = info.type_path().split("::").last().unwrap_or("");
-        (short_name == component_name).then_some((type_id, component.id()))
-    })?;
+    let (type_id, id) = world
+        .components()
+        .iter_registered()
+        .find_map(|(id, component)| {
+            let type_id = component.type_id()?;
+            let info = type_registry.get_type_info(type_id)?;
+            let short_name = info.type_path().split("::").last().unwrap_or("");
+            (short_name == component_name).then_some((type_id, id))
+        })?;
 
     let mut entity_mut = world.get_entity_mut(entity).ok()?;
     let mut component_ref = entity_mut.get_mut_by_id(id).ok()?;
     let reflect_from_ptr = type_registry.get(type_id)?.data::<ReflectFromPtr>()?;
-    // SAFE: `value` is of type `Reflected`, which the `ReflectFromPtr` was created for
-    let reflected = unsafe { reflect_from_ptr.as_reflect_mut(component_ref.as_mut()) };
+    // SAFETY: The component and ReflectFromPtr were retrieved for the same registered type ID.
+    let reflected = unsafe { reflect_from_ptr.ptr_as_reflect_mut(component_ref.as_mut()) };
     drop(type_registry);
     let struct_info = reflected.reflect_mut().as_struct().ok()?;
     let field = struct_info.field_mut(field_name)?;
@@ -254,6 +257,7 @@ async fn render_entity_list() -> Html<String> {
 }
 
 fn render_component(
+    component_id: ComponentId,
     component_info: ComponentInfo,
     type_registry: &TypeRegistry,
     entity: Entity,
@@ -273,11 +277,12 @@ fn render_component(
     let component_data = if let Some(type_id) = component_info.type_id() {
         match world
             .entity(entity)
-            .get_by_id(component_info.id())
+            .get_by_id(component_id)
             .map(|component| {
                 let reflect_data = type_registry.get(type_id)?;
                 let reflect_from_ptr = reflect_data.data::<ReflectFromPtr>()?;
-                Some(unsafe { reflect_from_ptr.as_reflect(component) })
+                // SAFETY: The component and ReflectFromPtr share the same registered type ID.
+                Some(unsafe { reflect_from_ptr.ptr_as_reflect(component) })
             }) {
             Ok(Some(awa)) => Some(awa),
             _ => None,
@@ -310,8 +315,9 @@ fn render_component_list(entity: Entity, world: &World) -> Markup {
     html! {
         div class="component-list p-3" {
             h3 class="h5 text-light mb-3" { "Entity Components" }
-            @for component_info in components {
+            @for (component_id, component_info) in components {
                 (render_component(
+                    component_id,
                     component_info.clone(),
                     &type_registry,
                     entity,
@@ -416,7 +422,7 @@ fn get_named_entities(world: &mut World) -> Vec<(Entity, Option<String>)> {
 
         // Only include entities that have at least one reflected component
         if world.inspect_entity(entity).is_ok_and(|mut components| {
-            components.any(|info| {
+            components.any(|(_, info)| {
                 let type_register = type_registry.clone();
                 let type_register = type_register.read();
                 info.type_id()
@@ -447,7 +453,7 @@ fn get_component_count(world: &World, entity: Entity) -> usize {
     // Only count reflected components
     world.inspect_entity(entity).map_or(0, |components| {
         components
-            .filter(|info| {
+            .filter(|(_, info)| {
                 let type_registry = type_registry.read();
                 info.type_id()
                     .is_some_and(|type_id| type_registry.get_type_info(type_id).is_some())

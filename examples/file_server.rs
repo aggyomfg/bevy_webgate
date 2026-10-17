@@ -69,7 +69,7 @@ async fn serve_custom_file(Path(file_path): Path<String>) -> Response {
 
 async fn serve_api_info() -> impl IntoResponse {
     let service_name = "Bevy WebGate File Server";
-    let version = "0.3.0";
+    let version = "0.4.0";
     let description = "A static file server built with Bevy and Axum";
     let endpoints = vec![
         ("/", "Main index page"),
